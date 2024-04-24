@@ -1,26 +1,43 @@
-# Efficient Streaming Language Models with Attention Sinks 
-[[paper](http://arxiv.org/abs/2309.17453)] [[slides](assets/StreamingLLM.pdf)][[video](https://youtu.be/hvJsEzP34o8)]
+# Efficient KV Cache Replacement Policy for LLMs
 
-![schemes](figures/schemes.png)
+## Introduction
 
-https://github.com/mit-han-lab/streaming-llm/assets/40906949/2bd1cda4-a0bd-47d1-a023-fbf7779b8358
+This repository contains the implementation of the Special-Character-Aware Caching (SCAC) strategy for efficient and effective KV cache eviction in Large Language Models (LLMs), particularly focusing on punctuation management in cached tokens. This project was developed as part of the CS550 Advanced Operating Systems course at Illinois Institute of Technology.
 
-## TL;DR
-We deploy LLMs for infinite-length inputs without sacrificing efficiency and performance.
+Our approach introduces a novel caching strategy that leverages special characters, particularly punctuations, to improve the efficiency of KV caches in LLMs without sacrificing performance. By optimizing the cache replacement policy, our method aims to balance memory consumption and inference accuracy.
 
-## News
+## Project Team
 
-- [2024/01] [SwiftInfer](https://github.com/hpcaitech/SwiftInfer), a TensorRT-based implementation makes StreamingLLM more production-grade.
-- [2024/01] StreamingLLM is integrated into NVIDIA [TensorRT-LLM](https://github.com/NVIDIA/TensorRT-LLM/tree/main/examples/llama#run-llama-with-streamingllm)!
-- [2023/12] StreamingLLM enables endless and efficient LLM generation on [iPhone](https://x.com/davidpissarra/status/1735761373261427189?s=20)!
-- [2023/12] StreamingLLM is integrated by HuggingFace Transformers' [main branch](https://github.com/huggingface/transformers/pull/26681).
-- [2023/10] StreamingLLM is integrated into [Intel Extension for Transformers](https://github.com/intel/intel-extension-for-transformers).
-- [2023/10] Check out [Attention Sinks](https://github.com/tomaarsen/attention_sinks), a third-party implementation to enable StreamingLLM on more Huggingface LLMs.
+- Haoxuan Wang
+- Kaiang Wen
+- Project Lead: Xiaoyang Lu
 
-## Abstract
-Deploying Large Language Models (LLMs) in streaming applications such as multi-round dialogue, where long interactions are expected, is urgently needed but poses two major challenges. Firstly, during the decoding stage, caching previous tokens' Key and Value states (KV) consumes extensive memory. Secondly, popular LLMs cannot generalize to longer texts than the training sequence length. Window attention, where only the most recent KVs are cached, is a natural approach --- but we show that it fails when the text length surpasses the cache size. We observe an interesting phenomenon, namely attention sink, that keeping the KV of initial tokens will largely recover the performance of window attention. In this paper, we first demonstrate that the emergence of attention sink is due to the strong attention scores towards initial tokens as a ``sink'' even if they are not semantically important. Based on the above analysis, we introduce StreamingLLM, an efficient framework that enables LLMs trained with a finite length attention window to generalize to infinite sequence length without any fine-tuning. We show that StreamingLLM can enable Llama-2, MPT, Falcon, and Pythia to perform stable and efficient language modeling with up to 4 million tokens and more. In addition, we discover that adding a placeholder token as a dedicated attention sink during pre-training can further improve streaming deployment. In streaming settings, StreamingLLM outperforms the sliding window recomputation baseline by up to 22.2x speedup.
+## Features
+
+-**Special-Character-Aware Caching (SCAC):** Targets punctuations for improved caching efficiency.
+-**Dynamic Cache Management:** Efficiently manages cache size and eviction policies to optimize performance under hardware constraints.
+-**Experimental Validation:** Validated using the Llama-2-7B model with the PG19 dataset, demonstrating improved perplexity scores.
+
+## Experiment Setup
+
+The experiments were conducted under the following settings:
+
+- Model: Llama-2-7B
+- Dataset: PG19
+- Metric: Perplexity
+- Cache size
+  - Attention sink: 4
+  - Window size + SCAC: 2048
+- Hardware: A6000 with 48GB memory
 
 ## Usage
+
+### Installation
+
+```bash
+git clone git@github.com:glisses/Efficient-Effective-KV-Cache-Replacement-Policy-for-LLMs.git
+cd Efficient-Effective-KV-Cache-Replacement-Policy-for-LLMs.git
+```
 
 ### Environment Setup
 
@@ -34,52 +51,55 @@ pip install transformers==4.33.0 accelerate datasets evaluate wandb scikit-learn
 python setup.py develop
 ```
 
-### Run Streaming Llama Chatbot
+### Run Chatbot
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python examples/run_streaming_llama.py  --enable_streaming
+python examples/eval_long_ppl_punc.py --model_name_or_path meta-llama/Llama-2b-hf --dataset_name pg19 --split test --enable_Start_recent_kv_cache --enable_pos_shift --start_size 4 --punc_size 128 --recent_size 1920
 ```
 
-## FAQ
+## Results
 
-1. **What does "working on infinite-length inputs" imply for LLMs?**
-   
-    Handling infinite-length text with LLMs presents challenges. Notably, storing all previous Key and Value (KV) states demands significant memory, and models might struggle to generate text beyond their training sequence length. StreamingLLM addresses this by retaining only the most recent tokens and attention sinks, discarding intermediate tokens. This enables the model to generate coherent text from recent tokens without a cache reset — a capability not seen in earlier methods.
+### **SCAC Size v.s. Performance**
 
-2. **Is the context window of LLMs expanded?**
+| Attention sink size | Window size | SCAC size | 0.01 * PPL↓ (5.65+) |
+| ------------------- | ----------- | --------- | ------------------- |
+| 4                   | 2048        | 0         | 0.8117              |
+| 4                   | 2044        | 4         | 0.8151              |
+| 4                   | 2016        | 32        | 0.5703              |
+| 4                   | 1984        | 64        | 0.4689              |
+| 4                   | 1920        | 128       | 0.3061              |
+| 4                   | 1792        | 256       | 0.387               |
+| 4                   | 1536        | 512       | 1.3387              |
+| 0                   | 1924        | 128       | N/A                 |
+| 4                   | 1892        | 156       | 0.2916              |
 
-    No. The context window remains unchanged. Only the most recent tokens and attention sinks are retained, discarding middle tokens. This means the model can only process the latest tokens. The context window remains constrained by its initial pre-training. For instance, if Llama-2 is pre-trained with a context window of 4096 tokens, then the maximum cache size for StreamingLLM on Llama-2 remains 4096.
+![image.png](https://s2.loli.net/2024/04/25/5j1C2c9nXqHAVmv.png)
 
-3. **Can I input an extensive text, like a book, into StreamingLLM for summarization?**
+### **Special character type v.s. Performance**
 
-    While you can input a lengthy text, the model will only recognize the latest tokens. Thus, if a book is an input, StreamingLLM might only summarize the concluding paragraphs, which might not be very insightful. As emphasized earlier, we neither expand the LLMs' context window nor enhance their long-term memory. StreamingLLM's strength lies in generating fluent text from recent tokens without needing a cache refresh.
+| Punctuationtype | Attention sink size | Window size | SCAC size | 0.01 * PPL↓ (5.65+) |
+| --------------- | ------------------- | ----------- | --------- | ------------------- |
+| All             | 4                   | 1920        | 128       | 0.3061              |
+| .,?!;:"         | 4                   | 1920        | 128       | 0.3028              |
+| .,!?            | 4                   | 1920        | 128       | 0.3745              |
+| .?!             | 4                   | 1920        | 128       | 0.5593              |
+| .,              | 4                   | 1920        | 128       | 0.3651              |
+| ,               | 4                   | 1920        | 128       | 0.3617              |
+| .               | 4                   | 1920        | 128       | 0.6093              |
 
-4. **What is the ideal use case for StreamingLLM?**
+### Ablations
 
-    StreamingLLM is optimized for streaming applications, such as multi-round dialogues. It's ideal for scenarios where a model needs to operate continually without requiring extensive memory or dependency on past data. An example is a daily assistant based on LLMs. StreamingLLM would let the model function continuously, basing its responses on recent conversations without needing to refresh its cache. Earlier methods would either need a cache reset when the conversation length exceeded the training length (losing recent context) or recompute KV states from recent text history, which can be time-consuming.
-
-5. **How does StreamingLLM relate to recent works on context extension?**
-
-    StreamingLLM is orthogonal to recent context extension methods and can be integrated with them. In StreamingLLM's context, "context extension" refers to the possibility of using a larger cache size to store more recent tokens. For a practical demonstration, refer to Figure 9 in our paper, where we implement StreamingLLM with models like LongChat-7B-v1.5-32K and Llama-2-7B-32K-Instruct.
-
-## TODOs
-We will release the code and data in the following order, please stay tuned!
-
-- [x] Release core code of StreamingLLM, including Llama-2, MPT, Falcon, and Pythia.
-- [x] Release perplexity evaluation code
-- [x] Release Streaming Llama Chatbot demo.
-- [ ] Release StreamEval dataset and evaluation code.
+| Corruption type                                           | Attention sink size | Window size | SCAC size | 0.01 * PPL↓ (5.65+) |
+| --------------------------------------------------------- | ------------------- | ----------- | --------- | ------------------- |
+| None                                                      | 4                   | 1920        | 0         | 1.1835              |
+| Randomly corrupt with zero tensors with probability 50%   | 4                   | 1920        | 128       | N/A                 |
+| Randomly corrupt with random tensors with probability 50% | 4                   | 1920        | 128       | N/A                 |
+| Always replace with the first 128 cached window tokens    | 4                   | 1920        | 128       | 119.6472            |
+| Always replace with the last 128 cached window tokens     | 4                   | 1920        | 128       | 1.3843              |
 
 
-## Citation
 
-If you find StreamingLLM useful or relevant to your project and research, please kindly cite our paper:
+## Acknowledgments
 
-```bibtex
-@article{xiao2023streamingllm,
-        title={Efficient Streaming Language Models with Attention Sinks},
-        author={Xiao, Guangxuan and Tian, Yuandong and Chen, Beidi and Han, Song and Lewis, Mike},
-        journal={arXiv},
-        year={2023}
-        }
-```
+* Special thanks to Prof. Sun and Xiaoyang Lu for guidance and support throughout the project.
+* We would like to express our gratitude to [StreamingLLM](https://github.com/mit-han-lab/streaming-llm) for their open-source code, which served as a foundation for our project's codebase.
