@@ -40,7 +40,7 @@ The experiments were conducted under the following settings:
 
 ```bash
 git clone git@github.com:glisses/Efficient-Effective-KV-Cache-Replacement-Policy-for-LLMs.git
-cd Efficient-Effective-KV-Cache-Replacement-Policy-for-LLMs.git
+cd Efficient-Effective-KV-Cache-Replacement-Policy-for-LLMs
 ```
 
 ### Environment Setup
