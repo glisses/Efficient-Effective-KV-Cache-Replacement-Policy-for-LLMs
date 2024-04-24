@@ -15,7 +15,11 @@ Our approach introduces a novel caching strategy that leverages special characte
 ## Features
 
 -**Special-Character-Aware Caching (SCAC):** Targets punctuations for improved caching efficiency.
+
+
 -**Dynamic Cache Management:** Efficiently manages cache size and eviction policies to optimize performance under hardware constraints.
+
+
 -**Experimental Validation:** Validated using the Llama-2-7B model with the PG19 dataset, demonstrating improved perplexity scores.
 
 ## Experiment Setup
@@ -62,42 +66,40 @@ python examples/eval_long_ppl_punc.py --model_name_or_path meta-llama/Llama-2b-h
 ### **SCAC Size v.s. Performance**
 
 | Attention sink size | Window size | SCAC size | 0.01 * PPL↓ (5.65+) |
-| ------------------- | ----------- | --------- | ------------------- |
-| 4                   | 2048        | 0         | 0.8117              |
-| 4                   | 2044        | 4         | 0.8151              |
-| 4                   | 2016        | 32        | 0.5703              |
-| 4                   | 1984        | 64        | 0.4689              |
-| 4                   | 1920        | 128       | 0.3061              |
-| 4                   | 1792        | 256       | 0.387               |
-| 4                   | 1536        | 512       | 1.3387              |
-| 0                   | 1924        | 128       | N/A                 |
-| 4                   | 1892        | 156       | 0.2916              |
+| ------------------- | ----------- | --------- | -------------------- |
+| 4                   | 2048        | 0         | 0.8117               |
+| 4                   | 2044        | 4         | 0.8151               |
+| 4                   | 2016        | 32        | 0.5703               |
+| 4                   | 1984        | 64        | 0.4689               |
+| 4                   | 1920        | 128       | 0.3061               |
+| 4                   | 1792        | 256       | 0.387                |
+| 4                   | 1536        | 512       | 1.3387               |
+| 0                   | 1924        | 128       | N/A                  |
+| 4                   | 1892        | 156       | 0.2916               |
 
 ![image.png](https://s2.loli.net/2024/04/25/5j1C2c9nXqHAVmv.png)
 
 ### **Special character type v.s. Performance**
 
 | Punctuationtype | Attention sink size | Window size | SCAC size | 0.01 * PPL↓ (5.65+) |
-| --------------- | ------------------- | ----------- | --------- | ------------------- |
-| All             | 4                   | 1920        | 128       | 0.3061              |
-| .,?!;:"         | 4                   | 1920        | 128       | 0.3028              |
-| .,!?            | 4                   | 1920        | 128       | 0.3745              |
-| .?!             | 4                   | 1920        | 128       | 0.5593              |
-| .,              | 4                   | 1920        | 128       | 0.3651              |
-| ,               | 4                   | 1920        | 128       | 0.3617              |
-| .               | 4                   | 1920        | 128       | 0.6093              |
+| --------------- | ------------------- | ----------- | --------- | -------------------- |
+| All             | 4                   | 1920        | 128       | 0.3061               |
+| .,?!;:"         | 4                   | 1920        | 128       | 0.3028               |
+| .,!?            | 4                   | 1920        | 128       | 0.3745               |
+| .?!             | 4                   | 1920        | 128       | 0.5593               |
+| .,              | 4                   | 1920        | 128       | 0.3651               |
+| ,               | 4                   | 1920        | 128       | 0.3617               |
+| .               | 4                   | 1920        | 128       | 0.6093               |
 
 ### Ablations
 
 | Corruption type                                           | Attention sink size | Window size | SCAC size | 0.01 * PPL↓ (5.65+) |
-| --------------------------------------------------------- | ------------------- | ----------- | --------- | ------------------- |
-| None                                                      | 4                   | 1920        | 0         | 1.1835              |
-| Randomly corrupt with zero tensors with probability 50%   | 4                   | 1920        | 128       | N/A                 |
-| Randomly corrupt with random tensors with probability 50% | 4                   | 1920        | 128       | N/A                 |
-| Always replace with the first 128 cached window tokens    | 4                   | 1920        | 128       | 119.6472            |
-| Always replace with the last 128 cached window tokens     | 4                   | 1920        | 128       | 1.3843              |
-
-
+| --------------------------------------------------------- | ------------------- | ----------- | --------- | -------------------- |
+| None                                                      | 4                   | 1920        | 0         | 1.1835               |
+| Randomly corrupt with zero tensors with probability 50%   | 4                   | 1920        | 128       | N/A                  |
+| Randomly corrupt with random tensors with probability 50% | 4                   | 1920        | 128       | N/A                  |
+| Always replace with the first 128 cached window tokens    | 4                   | 1920        | 128       | 119.6472             |
+| Always replace with the last 128 cached window tokens     | 4                   | 1920        | 128       | 1.3843               |
 
 ## Acknowledgments
 
